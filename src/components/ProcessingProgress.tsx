@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { cn } from '@/lib/utils';
+import * as XLSX from 'xlsx';
 
 interface ProcessingProgressProps {
   file: File | null;
@@ -77,6 +78,16 @@ export const ProcessingProgress = ({
     URL.revokeObjectURL(url);
   };
 
+  const downloadExcel = () => {
+    if (!csvData || !file) return;
+    const ws = XLSX.utils.csv_to_sheet(csvData);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'IFC Data');
+    const baseName = file.name.replace(/\.[^/.]+$/, '');
+    const safeBase = baseName.replace(/[^a-zA-Z0-9._-]+/g, '_') || 'export';
+    XLSX.writeFile(wb, `${safeBase}.xlsx`);
+  };
+
   if (!file) return null;
 
   return (
@@ -148,10 +159,16 @@ export const ProcessingProgress = ({
           {/* Action Buttons */}
           <div className="flex space-x-4">
             {isComplete && csvData && (
-              <Button onClick={downloadCSV} className="flex-1">
-                <Download className="h-4 w-4 mr-2" />
-                Download CSV
-              </Button>
+              <>
+                <Button onClick={downloadCSV} className="flex-1">
+                  <Download className="h-4 w-4 mr-2" />
+                  Download CSV
+                </Button>
+                <Button onClick={downloadExcel} variant="secondary" className="flex-1">
+                  <Download className="h-4 w-4 mr-2" />
+                  Download Excel
+                </Button>
+              </>
             )}
             <Button variant="outline" onClick={onReset} className="flex-1">
               Convert Another File

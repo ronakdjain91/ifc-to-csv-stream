@@ -6,8 +6,12 @@ import { useToast } from '../hooks/use-toast';
 import { FileUpload } from './FileUpload';
 import { ModelViewer } from './ModelViewer';
 import { QuantityPanel } from './QuantityPanel';
+import { PivotTable } from './PivotTable';
+import { HierarchyPivotTable } from './HierarchyPivotTable';
 import { ProcessingProgress } from './ProcessingProgress';
 import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from './ui/resizable';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
+import { useIsMobile } from '../hooks/use-mobile';
 import { parseIFCFile3D, IFCModel, IFCElement } from '../utils/ifcParser3D';
 
 export const IFCViewer = () => {
@@ -18,6 +22,7 @@ export const IFCViewer = () => {
   const [selectedElement, setSelectedElement] = useState<IFCElement | null>(null);
   const [visibleTypes, setVisibleTypes] = useState<Set<string>>(new Set());
   const { toast } = useToast();
+  const isMobile = useIsMobile();
 
   const handleFileSelect = useCallback(async (selectedFile: File) => {
     setFile(selectedFile);
@@ -127,6 +132,81 @@ export const IFCViewer = () => {
     );
   }
 
+  if (isMobile) {
+    return (
+      <div className="h-screen flex flex-col">
+        <div className="border-b bg-background px-4 py-3">
+          <div className="flex items-center justify-between">
+            <div>
+              <h1 className="text-lg font-semibold text-foreground">IFC Viewer</h1>
+              <p className="text-xs text-muted-foreground">
+                {file.name} • {model?.elements.length} elements
+              </p>
+            </div>
+            <Button variant="outline" size="sm" onClick={handleReset}>
+              <Upload className="w-3 h-3 mr-1" />
+              New
+            </Button>
+          </div>
+        </div>
+        
+        <div className="flex-1 overflow-hidden">
+          <Tabs defaultValue="model" className="h-full flex flex-col">
+            <div className="border-b px-4">
+              <TabsList className="grid w-full grid-cols-4">
+                <TabsTrigger value="model" className="text-xs">3D Model</TabsTrigger>
+                <TabsTrigger value="quantities" className="text-xs">Quantities</TabsTrigger>
+                <TabsTrigger value="pivot" className="text-xs">Pivot</TabsTrigger>
+                <TabsTrigger value="hierarchy" className="text-xs">Hierarchy</TabsTrigger>
+              </TabsList>
+            </div>
+            
+            <div className="flex-1 overflow-hidden">
+              <TabsContent value="model" className="h-full m-0 p-2">
+                <ModelViewer
+                  elements={visibleElements}
+                  selectedElement={selectedElement}
+                  onElementClick={handleElementSelect}
+                />
+              </TabsContent>
+              
+              <TabsContent value="quantities" className="h-full m-0">
+                {model && (
+                  <QuantityPanel
+                    quantitiesByType={model.quantities.byType}
+                    quantitiesByLevel={model.quantities.byLevel}
+                    selectedElement={selectedElement}
+                    onElementSelect={handleElementSelect}
+                    visibleTypes={visibleTypes}
+                    onTypeVisibilityToggle={handleTypeVisibilityToggle}
+                  />
+                )}
+              </TabsContent>
+              
+              <TabsContent value="pivot" className="h-full m-0 p-2">
+                {model && (
+                  <PivotTable
+                    elements={model.elements}
+                    selectedElement={selectedElement}
+                    onElementSelect={handleElementSelect}
+                  />
+                )}
+              </TabsContent>
+              <TabsContent value="hierarchy" className="h-full m-0 p-2">
+                {model && (
+                  <HierarchyPivotTable
+                    elements={model.elements}
+                    selectedElement={selectedElement}
+                    onElementSelect={handleElementSelect}
+                  />
+                )}
+              </TabsContent>
+            </div>
+          </Tabs>
+        </div>
+      </div>
+    );
+  }
   return (
     <div className="h-screen flex flex-col">
       <div className="border-b bg-background px-4 py-3">
@@ -158,17 +238,50 @@ export const IFCViewer = () => {
           
           <ResizableHandle withHandle />
           
-          <ResizablePanel defaultSize={30} minSize={25} maxSize={40}>
-            {model && (
-              <QuantityPanel
-                quantitiesByType={model.quantities.byType}
-                quantitiesByLevel={model.quantities.byLevel}
-                selectedElement={selectedElement}
-                onElementSelect={handleElementSelect}
-                visibleTypes={visibleTypes}
-                onTypeVisibilityToggle={handleTypeVisibilityToggle}
-              />
-            )}
+          <ResizablePanel defaultSize={40} minSize={30} maxSize={60}>
+            <Tabs defaultValue="quantities" className="h-full flex flex-col">
+              <div className="border-b px-4">
+                <TabsList className="grid w-full grid-cols-3">
+                  <TabsTrigger value="quantities" className="text-sm">Quantities</TabsTrigger>
+                  <TabsTrigger value="pivot" className="text-sm">Pivot</TabsTrigger>
+                  <TabsTrigger value="hierarchy" className="text-sm">Hierarchy</TabsTrigger>
+                </TabsList>
+              </div>
+              
+              <div className="flex-1 overflow-hidden">
+                <TabsContent value="quantities" className="h-full m-0">
+                  {model && (
+                    <QuantityPanel
+                      quantitiesByType={model.quantities.byType}
+                      quantitiesByLevel={model.quantities.byLevel}
+                      selectedElement={selectedElement}
+                      onElementSelect={handleElementSelect}
+                      visibleTypes={visibleTypes}
+                      onTypeVisibilityToggle={handleTypeVisibilityToggle}
+                    />
+                  )}
+                </TabsContent>
+                
+                <TabsContent value="pivot" className="h-full m-0 p-4">
+                  {model && (
+                    <PivotTable
+                      elements={model.elements}
+                      selectedElement={selectedElement}
+                      onElementSelect={handleElementSelect}
+                    />
+                  )}
+                </TabsContent>
+                <TabsContent value="hierarchy" className="h-full m-0 p-4">
+                  {model && (
+                    <HierarchyPivotTable
+                      elements={model.elements}
+                      selectedElement={selectedElement}
+                      onElementSelect={handleElementSelect}
+                    />
+                  )}
+                </TabsContent>
+              </div>
+            </Tabs>
           </ResizablePanel>
         </ResizablePanelGroup>
       </div>
