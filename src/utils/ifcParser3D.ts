@@ -39,14 +39,16 @@ export interface IFCModel {
 export const parseIFCFile3D = async (file: File): Promise<IFCModel> => {
   return new Promise((resolve) => {
     const reader = new FileReader();
-    
+    const MAX_BYTES = 200 * 1024; // Read only first 200KB to avoid heavy main-thread work
+
     reader.onload = (e) => {
       const content = e.target?.result as string;
       const model = parseIFCContent3D(content);
       resolve(model);
     };
-    
-    reader.readAsText(file);
+
+    const slice = file.slice(0, Math.min(file.size, MAX_BYTES));
+    reader.readAsText(slice);
   });
 };
 
@@ -197,25 +199,41 @@ const parseIFCLine3D = (line: string, index: number): IFCElement | null => {
   }
 };
 
+// Cache shared geometries and materials to avoid allocations per element
+const geometryCache: Record<string, THREE.BufferGeometry> = {};
+const materialCache: Record<string, THREE.Material> = {};
+
 const createGeometryForType = (type: string): THREE.BufferGeometry => {
-  // Use simple geometries for better performance
+  if (geometryCache[type]) return geometryCache[type];
+
+  let geometry: THREE.BufferGeometry;
   switch (type) {
     case 'IFCWALL':
-      return new THREE.BoxGeometry(0.1, 1.5, 2);
+      geometry = new THREE.BoxGeometry(0.1, 1.5, 2);
+      break;
     case 'IFCDOOR':
-      return new THREE.BoxGeometry(0.05, 1, 0.4);
+      geometry = new THREE.BoxGeometry(0.05, 1, 0.4);
+      break;
     case 'IFCWINDOW':
-      return new THREE.BoxGeometry(0.02, 0.8, 0.6);
+      geometry = new THREE.BoxGeometry(0.02, 0.8, 0.6);
+      break;
     case 'IFCCOLUMN':
-      return new THREE.BoxGeometry(0.1, 1.5, 0.1); // Use box instead of cylinder
+      geometry = new THREE.BoxGeometry(0.1, 1.5, 0.1);
+      break;
     case 'IFCBEAM':
-      return new THREE.BoxGeometry(2, 0.15, 0.15);
+      geometry = new THREE.BoxGeometry(2, 0.15, 0.15);
+      break;
     default:
-      return new THREE.BoxGeometry(0.5, 0.5, 0.5);
+      geometry = new THREE.BoxGeometry(0.5, 0.5, 0.5);
+      break;
   }
+  geometryCache[type] = geometry;
+  return geometry;
 };
 
 const createMaterialForType = (type: string): THREE.Material => {
+  if (materialCache[type]) return materialCache[type];
+
   const materials: Record<string, number> = {
     IFCWALL: 0x8B4513,
     IFCDOOR: 0x654321,
@@ -225,12 +243,14 @@ const createMaterialForType = (type: string): THREE.Material => {
     IFCBEAM: 0x8B4513,
     default: 0x888888
   };
-  
-  return new THREE.MeshPhongMaterial({
+
+  const base = new THREE.MeshBasicMaterial({
     color: materials[type] || materials.default,
     transparent: type === 'IFCWINDOW',
     opacity: type === 'IFCWINDOW' ? 0.6 : 1
   });
+  materialCache[type] = base;
+  return base;
 };
 
 const extractStringValue = (param: string): string | null => {
