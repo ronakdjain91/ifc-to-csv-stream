@@ -47,13 +47,15 @@ const ElementMesh = ({ element, isSelected, onClick }: ElementMeshProps) => {
 };
 
 const Scene = ({ elements, selectedElement, onElementClick }: ModelViewerProps) => {
+  // Limit elements for performance
+  const limitedElements = elements.slice(0, 50);
+  
   return (
     <>
-      <ambientLight intensity={0.4} />
-      <directionalLight position={[10, 10, 5]} intensity={1} castShadow />
-      <directionalLight position={[-10, -10, -5]} intensity={0.5} />
+      <ambientLight intensity={0.6} />
+      <directionalLight position={[10, 10, 5]} intensity={0.8} />
       
-      {elements.map((element) => (
+      {limitedElements.map((element) => (
         <ElementMesh
           key={element.id}
           element={element}
@@ -63,12 +65,12 @@ const Scene = ({ elements, selectedElement, onElementClick }: ModelViewerProps) 
       ))}
       
       <Grid 
-        args={[50, 50]} 
+        args={[10, 10]} 
         cellSize={1} 
-        cellThickness={0.5} 
-        cellColor="#888888" 
-        sectionSize={10} 
-        sectionThickness={1} 
+        cellThickness={0.3} 
+        cellColor="#666666" 
+        sectionSize={5} 
+        sectionThickness={0.5} 
         sectionColor="#444444"
         position={[0, -0.1, 0]}
       />
@@ -81,18 +83,17 @@ export const ModelViewer = ({ elements, selectedElement, onElementClick }: Model
     <div className="w-full h-full bg-gradient-to-br from-background to-muted rounded-lg overflow-hidden touch-none">
       <Canvas
         camera={{ 
-          position: [10, 10, 10], 
-          fov: 75,
+          position: [5, 5, 5], 
+          fov: 60,
           near: 0.1,
-          far: 1000
+          far: 100
         }}
-        shadows
-        dpr={[1, 2]}
-        performance={{ min: 0.5 }}
+        dpr={[1, 1.5]}
+        performance={{ min: 0.8 }}
         gl={{ 
-          antialias: true,
+          antialias: false,
           alpha: false,
-          powerPreference: "high-performance"
+          powerPreference: "default"
         }}
       >
         <Suspense fallback={null}>
@@ -101,13 +102,12 @@ export const ModelViewer = ({ elements, selectedElement, onElementClick }: Model
             selectedElement={selectedElement} 
             onElementClick={onElementClick} 
           />
-          <Environment preset="city" />
           <OrbitControls 
             enablePan={true}
             enableZoom={true}
             enableRotate={true}
-            minDistance={5}
-            maxDistance={50}
+            minDistance={3}
+            maxDistance={20}
             touches={{
               ONE: THREE.TOUCH.ROTATE,
               TWO: THREE.TOUCH.DOLLY_PAN

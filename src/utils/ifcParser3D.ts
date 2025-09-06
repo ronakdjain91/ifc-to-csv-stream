@@ -43,11 +43,7 @@ export const parseIFCFile3D = async (file: File): Promise<IFCModel> => {
     reader.onload = (e) => {
       const content = e.target?.result as string;
       const model = parseIFCContent3D(content);
-      
-      // Simulate processing time
-      setTimeout(() => {
-        resolve(model);
-      }, 2000);
+      resolve(model);
     };
     
     reader.readAsText(file);
@@ -57,30 +53,35 @@ export const parseIFCFile3D = async (file: File): Promise<IFCModel> => {
 const parseIFCContent3D = (content: string): IFCModel => {
   const elements: IFCElement[] = [];
   const levels: IFCLevel[] = [];
-  const lines = content.split('\n');
+  const lines = content.split('\n').slice(0, 50); // Limit to first 50 lines for performance
   
   // Create sample levels
   const sampleLevels = [
     { id: 'L1', name: 'Ground Floor', elevation: 0 },
     { id: 'L2', name: 'First Floor', elevation: 3000 },
-    { id: 'L3', name: 'Second Floor', elevation: 6000 },
   ];
   
-  // Parse entities and create 3D elements
-  for (let i = 0; i < lines.length; i++) {
+  // Parse only important IFC types for performance
+  const importantTypes = ['IFCWALL', 'IFCDOOR', 'IFCWINDOW', 'IFCCOLUMN', 'IFCBEAM'];
+  
+  for (let i = 0; i < Math.min(lines.length, 30); i++) {
     const line = lines[i];
     if (line.trim().startsWith('#')) {
-      const element = parseIFCLine3D(line, i);
-      if (element) {
-        // Assign to random level for demo
-        const level = sampleLevels[Math.floor(Math.random() * sampleLevels.length)];
-        element.level = level.name;
-        element.position = new THREE.Vector3(
-          (Math.random() - 0.5) * 20,
-          level.elevation / 1000,
-          (Math.random() - 0.5) * 20
-        );
-        elements.push(element);
+      // Check if line contains important types
+      const hasImportantType = importantTypes.some(type => line.includes(type));
+      if (hasImportantType) {
+        const element = parseIFCLine3D(line, i);
+        if (element) {
+          // Assign to level
+          const level = sampleLevels[i % 2];
+          element.level = level.name;
+          element.position = new THREE.Vector3(
+            (i % 5 - 2) * 2,
+            level.elevation / 1000,
+            Math.floor(i / 5) * 2 - 4
+          );
+          elements.push(element);
+        }
       }
     }
   }
@@ -197,21 +198,20 @@ const parseIFCLine3D = (line: string, index: number): IFCElement | null => {
 };
 
 const createGeometryForType = (type: string): THREE.BufferGeometry => {
+  // Use simple geometries for better performance
   switch (type) {
     case 'IFCWALL':
-      return new THREE.BoxGeometry(0.2, 3, 4);
+      return new THREE.BoxGeometry(0.1, 1.5, 2);
     case 'IFCDOOR':
-      return new THREE.BoxGeometry(0.1, 2.1, 0.8);
+      return new THREE.BoxGeometry(0.05, 1, 0.4);
     case 'IFCWINDOW':
-      return new THREE.BoxGeometry(0.05, 1.5, 1.2);
-    case 'IFCSPACE':
-      return new THREE.BoxGeometry(4, 0.1, 4);
+      return new THREE.BoxGeometry(0.02, 0.8, 0.6);
     case 'IFCCOLUMN':
-      return new THREE.CylinderGeometry(0.2, 0.2, 3);
+      return new THREE.BoxGeometry(0.1, 1.5, 0.1); // Use box instead of cylinder
     case 'IFCBEAM':
-      return new THREE.BoxGeometry(4, 0.3, 0.3);
+      return new THREE.BoxGeometry(2, 0.15, 0.15);
     default:
-      return new THREE.BoxGeometry(1, 1, 1);
+      return new THREE.BoxGeometry(0.5, 0.5, 0.5);
   }
 };
 
