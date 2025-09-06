@@ -85,6 +85,9 @@ const parseIFCContent3D = (content: string): IFCModel => {
     }
   }
   
+  // Approximate volumes using axis-aligned bounding boxes and subtract openings (doors/windows)
+  computeApproximateVolumes(elements);
+
   // Create levels with elements
   sampleLevels.forEach(levelData => {
     const levelElements = elements.filter(el => el.level === levelData.name);
@@ -241,4 +244,41 @@ const extractStringValue = (param: string): string | null => {
 const extractNumericValue = (param: string): number | null => {
   const num = parseFloat(param?.replace(/[^\d.-]/g, '') || '');
   return isNaN(num) ? null : num;
+};
+
+// Computes approximate volumes using geometry bounding boxes and subtracts window/door openings
+const computeApproximateVolumes = (elements: IFCElement[]) => {
+  // First compute raw volumes from geometry bounds
+  const idToVolume: Record<string, number> = {};
+  for (const el of elements) {
+    let volume = 0;
+    if (el.geometry) {
+      const bbox = new THREE.Box3().setFromBufferAttribute((el.geometry as any).attributes?.position);
+      const size = new THREE.Vector3();
+      bbox.getSize(size);
+      volume = Math.abs(size.x * size.y * size.z);
+    } else {
+      // fallback rough volume based on props if any
+      const w = Number(el.properties?.width || 1);
+      const h = Number(el.properties?.height || 1);
+      const t = Number(el.properties?.thickness || 0.2);
+      volume = w * h * t;
+    }
+    el.properties.volume = volume;
+    idToVolume[el.id] = volume;
+  }
+
+  // Subtract openings volume from host elements where applicable (simple heuristic)
+  const openingTypes = new Set(['IFCOPENINGELEMENT', 'IFCWINDOW', 'IFCDOOR']);
+  const hostTypes = new Set(['IFCWALL', 'IFCSLAB']);
+
+  const openings = elements.filter(e => openingTypes.has(e.type));
+  const hosts = elements.filter(e => hostTypes.has(e.type));
+  if (openings.length && hosts.length) {
+    const averageOpening = openings.reduce((s, o) => s + (o.properties.volume || 0), 0) / openings.length;
+    for (const host of hosts) {
+      const subtract = averageOpening * Math.min(5, Math.ceil(openings.length / hosts.length));
+      host.properties.volume = Math.max(0, (host.properties.volume || 0) - subtract);
+    }
+  }
 };
