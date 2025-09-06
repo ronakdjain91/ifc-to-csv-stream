@@ -78,15 +78,15 @@ const splitIFCEntities = (content: string): string[] => {
 
 const parseIFCLine = (line: string): IFCEntity | null => {
   try {
-    // Basic IFC line parsing - this is simplified
-    const match = line.match(/#(\d+)\s*=\s*(\w+)\s*\((.*)\);?/);
+    // Basic IFC line parsing capturing full param list
+    const match = line.match(/#(\d+)\s*=\s*(\w+)\s*\(([\s\S]*)\);?/);
     if (!match) return null;
     
     const [, id, type, params] = match;
     
-    // Parse parameters (simplified)
+    // Parse parameters at top level (respect nested parens and strings)
     const properties: Record<string, any> = {};
-    const paramList = params.split(',').map(p => p.trim());
+    const paramList = splitTopLevelParams(params);
     
     // Add some basic properties based on common IFC entities
     switch (type) {
@@ -126,8 +126,10 @@ const parseIFCLine = (line: string): IFCEntity | null => {
 };
 
 const extractStringValue = (param: string): string | null => {
-  const match = param?.match(/'([^']*)'/);
-  return match ? match[1] : null;
+  const match = param?.match(/'(?:''|[^'])*'/);
+  if (!match) return null;
+  const inner = match[0].slice(1, -1).replace(/''/g, "'");
+  return inner;
 };
 
 const extractNumericValue = (param: string): number | null => {
@@ -170,4 +172,41 @@ const csvEscape = (value: unknown): string => {
   // escape quotes
   str = str.replace(/"/g, '""');
   return `"${str}"`;
+};
+
+// Split parameters at the top level, respecting parentheses and quoted strings
+const splitTopLevelParams = (text: string): string[] => {
+  const parts: string[] = [];
+  let buf = '';
+  let depth = 0;
+  let inString = false;
+
+  for (let i = 0; i < text.length; i++) {
+    const ch = text[i];
+    const next = text[i + 1];
+
+    if (ch === "'" && (!inString || next !== "'")) {
+      inString = !inString;
+      buf += ch;
+      continue;
+    }
+    if (inString && ch === "'" && next === "'") {
+      buf += "''"; i++; continue;
+    }
+
+    if (!inString) {
+      if (ch === '(') depth++;
+      else if (ch === ')') depth = Math.max(0, depth - 1);
+      else if (ch === ',' && depth === 0) {
+        parts.push(buf.trim());
+        buf = '';
+        continue;
+      }
+    }
+
+    buf += ch;
+  }
+
+  if (buf.trim()) parts.push(buf.trim());
+  return parts;
 };
