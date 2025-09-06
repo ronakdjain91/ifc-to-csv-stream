@@ -19,7 +19,5 @@ export default defineConfig(({ mode }) => ({
       "@": path.resolve(__dirname, "./src"),
     },
   },
-  optimizeDeps: {
-    include: ['xlsx']
-  },
+  // No special optimizeDeps needed now that Excel export is removed
 }));

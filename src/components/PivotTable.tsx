@@ -3,7 +3,7 @@ import { Card, CardHeader, CardTitle, CardContent } from './ui/card';
 import { Button } from './ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { Badge } from './ui/badge';
-import { Download, ChevronDown, ChevronRight } from 'lucide-react';
+import { ChevronDown, ChevronRight } from 'lucide-react';
 import { IFCElement } from '../utils/ifcParser3D';
 // lazy import to avoid bundler resolution issues in some environments
 
@@ -76,32 +76,7 @@ export const PivotTable = ({ elements, selectedElement, onElementSelect }: Pivot
     return data;
   }, [elements, rowField, columnField]);
 
-  const exportToExcel = async () => {
-    const exportData: any[] = [];
-    
-    Object.entries(pivotData).forEach(([rowKey, rowData]) => {
-      rowData.elements.forEach(element => {
-        exportData.push({
-          'Element ID': element.id,
-          'Name': element.name,
-          'Type': element.type,
-          'Level': element.level,
-          'Area (m²)': element.properties?.area || 0,
-          'Volume (m³)': element.properties?.volume || 0,
-          'Width': element.properties?.width || 0,
-          'Height': element.properties?.height || 0,
-          'Length': element.properties?.length || 0,
-        });
-      });
-    });
-    
-    const mod = await import('xlsx');
-    const XLSX: any = (mod as any).default ?? mod;
-    const ws = XLSX.utils.json_to_sheet(exportData);
-    const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, 'IFC Elements');
-    XLSX.writeFile(wb, 'ifc_elements.xlsx');
-  };
+  // Excel export removed per request
 
   const toggleRowExpansion = (rowKey: string) => {
     const newExpanded = new Set(expandedRows);
@@ -116,13 +91,7 @@ export const PivotTable = ({ elements, selectedElement, onElementSelect }: Pivot
   return (
     <Card className="w-full h-full">
       <CardHeader className="pb-3">
-        <div className="flex items-center justify-between">
-          <CardTitle className="text-lg">Pivot Table Analysis</CardTitle>
-          <Button onClick={exportToExcel} size="sm" variant="outline">
-            <Download className="w-4 h-4 mr-2" />
-            Export Excel
-          </Button>
-        </div>
+        <CardTitle className="text-lg">Pivot Table Analysis</CardTitle>
         
         <div className="flex gap-4 mt-4">
           <div className="flex-1">
