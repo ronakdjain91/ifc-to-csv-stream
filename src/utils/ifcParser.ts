@@ -138,6 +138,95 @@ export const convertToCSVAllParams = (entities: IFCEntity[]): string => {
     const params = entity.params || [];
     const padded = [...params];
     while (padded.length < maxParams) padded.push('');
+    const esc = (v: unknown) => {
+      let s = v == null ? '' : String(v);
+      s = s.replace(/"/g, '""');
+      return `"${s}"`;
+    };
+    const row = [esc(entity.id), esc(entity.type), ...padded.map(esc)];
+    csvLines.push(row.join(','));
+  });
+  return csvLines.join('\n');
+};
+
+export const convertToCSVSelectedParams = (entities: IFCEntity[]): string => {
+  const headers = [
+    'GlobalId',
+    'Name',
+    'ObjectType',
+    'IfcElementType',
+    'IfcBuildingStorey (Level)',
+    'IfcQuantityLength',
+    'IfcQuantityArea',
+    'IfcQuantityVolume',
+    'IfcQuantityCount',
+    'IfcQuantityWeight',
+    'IfcBoundingBox',
+    'IfcSpatialStructureElement (Building, Storey, Zone)',
+    'IfcMaterial',
+    'IfcMaterialLayerSet',
+    'IfcClassificationReference',
+    'Pset_QuantityTakeOff',
+    'Pset_WallCommon',
+    'Pset_BeamCommon',
+    'Pset_ColumnCommon',
+    'Pset_MaterialQuantities',
+    'IfcElementAssembly',
+    'IfcOpeningElement',
+    'IfcReinforcingElement',
+    'IfcCovering'
+  ];
+  if (entities.length === 0) return headers.join(',');
+  const esc = (v: unknown) => {
+    let s = v == null ? '' : String(v);
+    s = s.replace(/"/g, '""');
+    return `"${s}"`;
+  };
+  const lines = [headers.join(',')];
+  for (const e of entities) {
+    const globalId = e.params && e.params.length > 0 ? (e.params[0].replace(/^'/, '').replace(/'$/, '')) : '';
+    const name = e.properties?.name ?? '';
+    const objectType = '';
+    const elementType = e.type ?? '';
+    const level = '';
+    const qLen = e.properties?.length ?? e.properties?.height ?? e.properties?.width ?? '';
+    const qArea = e.properties?.area ?? '';
+    const qVol = e.properties?.volume ?? '';
+    const qCount = '';
+    const qWeight = '';
+    const bbox = '';
+    const spatial = '';
+    const material = '';
+    const materialLayerSet = '';
+    const classRef = '';
+    const pQtyTO = '';
+    const pWall = '';
+    const pBeam = '';
+    const pColumn = '';
+    const pMatQty = '';
+    const elAssembly = '';
+    const opening = '';
+    const reinforcing = '';
+    const covering = '';
+    const row = [
+      esc(globalId), esc(name), esc(objectType), esc(elementType), esc(level),
+      esc(qLen), esc(qArea), esc(qVol), esc(qCount), esc(qWeight), esc(bbox), esc(spatial),
+      esc(material), esc(materialLayerSet), esc(classRef), esc(pQtyTO), esc(pWall), esc(pBeam), esc(pColumn), esc(pMatQty), esc(elAssembly), esc(opening), esc(reinforcing), esc(covering)
+    ];
+    lines.push(row.join(','));
+  }
+  return lines.join('\n');
+};
+
+export const convertToCSVAllParams = (entities: IFCEntity[]): string => {
+  if (entities.length === 0) return '';
+  const maxParams = entities.reduce((m, e) => Math.max(m, e.params?.length || 0), 0);
+  const headers = ['ID', 'Type', ...Array.from({ length: maxParams }, (_, i) => `Param_${i + 1}`)];
+  const csvLines = [headers.join(',')];
+  entities.forEach(entity => {
+    const params = entity.params || [];
+    const padded = [...params];
+    while (padded.length < maxParams) padded.push('');
     const row = [entity.id, entity.type, ...padded.map(v => (v !== undefined ? `"${String(v).replace(/\"/g, '""')}"` : ''))];
     csvLines.push(row.join(','));
   });

@@ -13,7 +13,7 @@ import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from './ui/resiz
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
 import { useIsMobile } from '../hooks/use-mobile';
 import { parseIFCFile3D, IFCModel, IFCElement } from '../utils/ifcParser3D';
-import { parseIFCFile as parseIFCAll, convertToCSVAllParams } from '@/utils/ifcParser';
+import { parseIFCFile as parseIFCAll, convertToCSVSelectedParams } from '@/utils/ifcParser';
 
 export const IFCViewer = () => {
   const [file, setFile] = useState<File | null>(null);
@@ -90,7 +90,7 @@ export const IFCViewer = () => {
   const handleDownloadAllParamsCSV = useCallback(async () => {
     if (!file) return;
     const entities = await parseIFCAll(file);
-    const csv = convertToCSVAllParams(entities);
+    const csv = convertToCSVSelectedParams(entities);
     const bom = '\uFEFF';
     const blob = new Blob([bom, csv], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
@@ -98,7 +98,7 @@ export const IFCViewer = () => {
     a.href = url;
     const baseName = file.name.replace(/\.[^/.]+$/, '');
     const safeBase = baseName.replace(/[^a-zA-Z0-9._-]+/g, '_') || 'export';
-    a.download = `${safeBase}_all_params.csv`;
+    a.download = `${safeBase}_selected_params.csv`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
