@@ -129,25 +129,7 @@ export const convertToCSV = (entities: IFCEntity[]): string => {
   return csvLines.join('\n');
 };
 
-export const convertToCSVAllParams = (entities: IFCEntity[]): string => {
-  if (entities.length === 0) return '';
-  const maxParams = entities.reduce((m, e) => Math.max(m, e.params?.length || 0), 0);
-  const headers = ['ID', 'Type', ...Array.from({ length: maxParams }, (_, i) => `Param_${i + 1}`)];
-  const csvLines = [headers.join(',')];
-  entities.forEach(entity => {
-    const params = entity.params || [];
-    const padded = [...params];
-    while (padded.length < maxParams) padded.push('');
-    const esc = (v: unknown) => {
-      let s = v == null ? '' : String(v);
-      s = s.replace(/"/g, '""');
-      return `"${s}"`;
-    };
-    const row = [esc(entity.id), esc(entity.type), ...padded.map(esc)];
-    csvLines.push(row.join(','));
-  });
-  return csvLines.join('\n');
-};
+// Removed duplicate convertToCSVAllParams definition
 
 export const convertToCSVSelectedParams = (entities: IFCEntity[]): string => {
   const headers = [
