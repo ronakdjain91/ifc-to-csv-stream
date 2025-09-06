@@ -3,7 +3,7 @@ import { Card, CardHeader, CardTitle, CardContent } from './ui/card';
 import { Button } from './ui/button';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from './ui/select';
 import { Badge } from './ui/badge';
-import { ChevronDown, ChevronRight } from 'lucide-react';
+import { ChevronDown, ChevronRight, Download } from 'lucide-react';
 import { IFCElement } from '../utils/ifcParser3D';
 // lazy import to avoid bundler resolution issues in some environments
 
@@ -11,6 +11,7 @@ interface PivotTableProps {
   elements: IFCElement[];
   selectedElement?: IFCElement | null;
   onElementSelect: (element: IFCElement) => void;
+  onDownloadSelectedParams?: () => void;
 }
 
 interface PivotData {
@@ -30,7 +31,7 @@ const availableFields = [
   { value: 'name', label: 'Name' },
 ];
 
-export const PivotTable = ({ elements, selectedElement, onElementSelect }: PivotTableProps) => {
+export const PivotTable = ({ elements, selectedElement, onElementSelect, onDownloadSelectedParams }: PivotTableProps) => {
   const [rowField, setRowField] = useState('type');
   const [columnField, setColumnField] = useState('level');
   const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
@@ -91,10 +92,18 @@ export const PivotTable = ({ elements, selectedElement, onElementSelect }: Pivot
   return (
     <Card className="w-full h-full">
       <CardHeader className="pb-3">
-        <CardTitle className="text-lg">Pivot Table Analysis</CardTitle>
+        <div className="flex items-center justify-between gap-2">
+          <CardTitle className="text-lg">Pivot Table Analysis</CardTitle>
+          {onDownloadSelectedParams && (
+            <Button size="sm" variant="outline" onClick={onDownloadSelectedParams}>
+              <Download className="w-4 h-4 mr-2" />
+              Download CSV
+            </Button>
+          )}
+        </div>
         
         <div className="flex gap-4 mt-4">
-          <div className="flex-1">
+          <div className="flex-1 min-w-0">
             <label className="text-sm font-medium text-muted-foreground">Rows</label>
             <Select value={rowField} onValueChange={setRowField as any}>
               <SelectTrigger>
@@ -110,7 +119,7 @@ export const PivotTable = ({ elements, selectedElement, onElementSelect }: Pivot
             </Select>
           </div>
           
-          <div className="flex-1">
+          <div className="flex-1 min-w-0">
             <label className="text-sm font-medium text-muted-foreground">Columns</label>
             <Select value={columnField} onValueChange={setColumnField as any}>
               <SelectTrigger>
@@ -142,11 +151,11 @@ export const PivotTable = ({ elements, selectedElement, onElementSelect }: Pivot
                   ) : (
                     <ChevronRight className="w-4 h-4" />
                   )}
-                  <span className="font-medium">{rowKey}</span>
+                  <span className="font-medium truncate max-w-[50vw]">{rowKey}</span>
                   <Badge variant="secondary">{rowData.count}</Badge>
                 </div>
                 
-                <div className="flex gap-4 text-sm text-muted-foreground">
+                <div className="flex gap-4 text-xs text-muted-foreground">
                   {rowData.totalArea! > 0 && (
                     <span>Area: {rowData.totalArea!.toFixed(1)} m²</span>
                   )}
@@ -162,7 +171,7 @@ export const PivotTable = ({ elements, selectedElement, onElementSelect }: Pivot
                     <div key={colKey} className="p-3 border-b last:border-b-0">
                       <div className="flex items-center justify-between mb-2">
                         <div className="flex items-center gap-2">
-                          <span className="text-sm font-medium">{colKey}</span>
+                          <span className="text-sm font-medium truncate max-w-[40vw]">{colKey}</span>
                           <Badge variant="outline" className="text-xs">
                             {colData.count}
                           </Badge>
@@ -189,7 +198,7 @@ export const PivotTable = ({ elements, selectedElement, onElementSelect }: Pivot
                                 : 'bg-background hover:bg-muted text-muted-foreground hover:text-foreground'
                             }`}
                           >
-                            {element.name}
+                            <span className="block truncate">{element.name}</span>
                           </button>
                         ))}
                         {colData.elements.length > 6 && (

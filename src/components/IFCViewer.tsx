@@ -223,6 +223,7 @@ export const IFCViewer = () => {
                     elements={model.elements}
                     selectedElement={selectedElement}
                     onElementSelect={handleElementSelect}
+                    onDownloadSelectedParams={handleDownloadAllParamsCSV}
                   />
                 )}
               </TabsContent>
@@ -315,6 +316,7 @@ export const IFCViewer = () => {
                       elements={model.elements}
                       selectedElement={selectedElement}
                       onElementSelect={handleElementSelect}
+                      onDownloadSelectedParams={handleDownloadAllParamsCSV}
                     />
                   )}
                 </TabsContent>
