@@ -10,83 +10,48 @@ export interface IFCEntity {
 export const parseIFCFile = async (file: File): Promise<IFCEntity[]> => {
   return new Promise((resolve) => {
     const reader = new FileReader();
-
+    
     reader.onload = (e) => {
       const content = e.target?.result as string;
       const entities = parseIFCContent(content);
-      resolve(entities);
+      
+      // Simulate processing time
+      setTimeout(() => {
+        resolve(entities);
+      }, 3000);
     };
-
+    
     reader.readAsText(file);
   });
 };
 
 const parseIFCContent = (content: string): IFCEntity[] => {
   const entities: IFCEntity[] = [];
-  const records = splitIFCEntities(content);
-
-  for (const record of records) {
-    const trimmed = record.trim();
-    if (!trimmed.startsWith('#')) continue;
-    const entity = parseIFCLine(trimmed);
-    if (entity) entities.push(entity);
+  const lines = content.split('\n');
+  
+  for (const line of lines) {
+    if (line.trim().startsWith('#')) {
+      const entity = parseIFCLine(line);
+      if (entity) {
+        entities.push(entity);
+      }
+    }
   }
-
+  
   return entities;
-};
-
-// Splits IFC STEP content into entity records that may span multiple lines
-const splitIFCEntities = (content: string): string[] => {
-  const result: string[] = [];
-  let buf = '';
-  let parenDepth = 0;
-  let inString = false;
-
-  for (let i = 0; i < content.length; i++) {
-    const ch = content[i];
-    const next = content[i + 1];
-
-    // handle string literals with doubled single-quotes inside
-    if (ch === "'" && (!inString || next !== "'")) {
-      inString = !inString;
-      buf += ch;
-      continue;
-    }
-    if (inString && ch === "'" && next === "'") {
-      buf += "''";
-      i++; // skip next
-      continue;
-    }
-
-    if (!inString) {
-      if (ch === '(') parenDepth++;
-      if (ch === ')') parenDepth = Math.max(0, parenDepth - 1);
-    }
-
-    buf += ch;
-
-    if (!inString && ch === ';' && parenDepth === 0) {
-      const record = buf.trim();
-      if (record) result.push(record);
-      buf = '';
-    }
-  }
-
-  if (buf.trim()) result.push(buf.trim());
-  return result;
 };
 
 const parseIFCLine = (line: string): IFCEntity | null => {
   try {
-    // Basic IFC line parsing capturing full param list
-    const match = line.match(/#(\d+)\s*=\s*(\w+)\s*\(([\s\S]*)\);?/);
+    // Basic IFC line parsing - this is simplified
+    const match = line.match(/#(\d+)\s*=\s*(\w+)\s*\((.*)\);?/);
     if (!match) return null;
     
     const [, id, type, params] = match;
     
-    // Parse parameters at top level (respect nested parens and strings)
+    // Parse parameters (simplified)
     const properties: Record<string, any> = {};
-    const paramList = splitTopLevelParams(params);
+    const paramList = params.split(',').map(p => p.trim());
     
     // Add some basic properties based on common IFC entities
     switch (type) {
@@ -126,10 +91,8 @@ const parseIFCLine = (line: string): IFCEntity | null => {
 };
 
 const extractStringValue = (param: string): string | null => {
-  const match = param?.match(/'(?:''|[^'])*'/);
-  if (!match) return null;
-  const inner = match[0].slice(1, -1).replace(/''/g, "'");
-  return inner;
+  const match = param?.match(/'([^']*)'/);
+  return match ? match[1] : null;
 };
 
 const extractNumericValue = (param: string): number | null => {
@@ -147,66 +110,19 @@ export const convertToCSV = (entities: IFCEntity[]): string => {
   });
   
   const headers = ['ID', 'Type', ...Array.from(allProperties)];
-  const csvLines = [headers.map(csvEscape).join(',')];
+  const csvLines = [headers.join(',')];
   
   entities.forEach(entity => {
     const row = [
-      csvEscape(entity.id),
-      csvEscape(entity.type),
+      entity.id,
+      entity.type,
       ...Array.from(allProperties).map(prop => {
         const value = entity.properties[prop];
-        return value !== undefined ? csvEscape(value) : '';
+        return value !== undefined ? `"${value}"` : '';
       })
     ];
     csvLines.push(row.join(','));
   });
   
   return csvLines.join('\n');
-};
-
-const csvEscape = (value: unknown): string => {
-  let str: string;
-  if (value === null || value === undefined) str = '';
-  else if (typeof value === 'object') str = JSON.stringify(value);
-  else str = String(value);
-  // escape quotes
-  str = str.replace(/"/g, '""');
-  return `"${str}"`;
-};
-
-// Split parameters at the top level, respecting parentheses and quoted strings
-const splitTopLevelParams = (text: string): string[] => {
-  const parts: string[] = [];
-  let buf = '';
-  let depth = 0;
-  let inString = false;
-
-  for (let i = 0; i < text.length; i++) {
-    const ch = text[i];
-    const next = text[i + 1];
-
-    if (ch === "'" && (!inString || next !== "'")) {
-      inString = !inString;
-      buf += ch;
-      continue;
-    }
-    if (inString && ch === "'" && next === "'") {
-      buf += "''"; i++; continue;
-    }
-
-    if (!inString) {
-      if (ch === '(') depth++;
-      else if (ch === ')') depth = Math.max(0, depth - 1);
-      else if (ch === ',' && depth === 0) {
-        parts.push(buf.trim());
-        buf = '';
-        continue;
-      }
-    }
-
-    buf += ch;
-  }
-
-  if (buf.trim()) parts.push(buf.trim());
-  return parts;
 };

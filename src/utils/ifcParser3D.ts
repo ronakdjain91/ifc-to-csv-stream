@@ -37,61 +37,51 @@ export interface IFCModel {
 }
 
 export const parseIFCFile3D = async (file: File): Promise<IFCModel> => {
-  // Dynamically read up to 1MB if needed to find enough entities
-  const MAX_TOTAL = 1024 * 1024;
-  const CHUNK = 200 * 1024;
-
-  const readChunk = (size: number) => new Promise<IFCModel>((resolve) => {
+  return new Promise((resolve) => {
     const reader = new FileReader();
+    
     reader.onload = (e) => {
       const content = e.target?.result as string;
       const model = parseIFCContent3D(content);
-      resolve(model);
+      
+      // Simulate processing time
+      setTimeout(() => {
+        resolve(model);
+      }, 2000);
     };
-    const slice = file.slice(0, Math.min(file.size, size));
-    reader.readAsText(slice);
+    
+    reader.readAsText(file);
   });
-
-  let size = Math.min(CHUNK, file.size);
-  let model = await readChunk(size);
-  // If too few elements parsed, expand read size cautiously
-  while (model.elements.length < 10 && size < Math.min(MAX_TOTAL, file.size)) {
-    size = Math.min(size + CHUNK, Math.min(MAX_TOTAL, file.size));
-    model = await readChunk(size);
-  }
-  return model;
 };
 
 const parseIFCContent3D = (content: string): IFCModel => {
   const elements: IFCElement[] = [];
   const levels: IFCLevel[] = [];
-  // Split into complete entities (may span multiple lines)
-  const records = splitIFCEntities3D(content).slice(0, 200);
-
+  const lines = content.split('\n');
+  
   // Create sample levels
   const sampleLevels = [
     { id: 'L1', name: 'Ground Floor', elevation: 0 },
     { id: 'L2', name: 'First Floor', elevation: 3000 },
+    { id: 'L3', name: 'Second Floor', elevation: 6000 },
   ];
   
-  // Parse only important IFC types for performance
-  const importantTypes = ['IFCWALL', 'IFCDOOR', 'IFCWINDOW', 'IFCCOLUMN', 'IFCBEAM'];
-  
-  for (let i = 0; i < records.length && elements.length < 100; i++) {
-    const rec = records[i];
-    if (!rec.startsWith('#')) continue;
-    const hasImportantType = importantTypes.some(type => rec.includes(type));
-    if (!hasImportantType) continue;
-    const element = parseIFCLine3D(rec, i);
-    if (element) {
-      const level = sampleLevels[i % 2];
-      element.level = level.name;
-      element.position = new THREE.Vector3(
-        (i % 5 - 2) * 2,
-        level.elevation / 1000,
-        Math.floor(i / 5) * 2 - 4
-      );
-      elements.push(element);
+  // Parse entities and create 3D elements
+  for (let i = 0; i < lines.length; i++) {
+    const line = lines[i];
+    if (line.trim().startsWith('#')) {
+      const element = parseIFCLine3D(line, i);
+      if (element) {
+        // Assign to random level for demo
+        const level = sampleLevels[Math.floor(Math.random() * sampleLevels.length)];
+        element.level = level.name;
+        element.position = new THREE.Vector3(
+          (Math.random() - 0.5) * 20,
+          level.elevation / 1000,
+          (Math.random() - 0.5) * 20
+        );
+        elements.push(element);
+      }
     }
   }
   
@@ -155,11 +145,11 @@ const parseIFCContent3D = (content: string): IFCModel => {
 
 const parseIFCLine3D = (line: string, index: number): IFCElement | null => {
   try {
-    const match = line.match(/#(\d+)\s*=\s*(\w+)\s*\(([\s\S]*)\);?/);
+    const match = line.match(/#(\d+)\s*=\s*(\w+)\s*\((.*)\);?/);
     if (!match) return null;
     
     const [, id, type, params] = match;
-    const paramList = splitTopLevelParams3D(params);
+    const paramList = params.split(',').map(p => p.trim());
     
     const element: IFCElement = {
       id,
@@ -206,41 +196,26 @@ const parseIFCLine3D = (line: string, index: number): IFCElement | null => {
   }
 };
 
-// Cache shared geometries and materials to avoid allocations per element
-const geometryCache: Record<string, THREE.BufferGeometry> = {};
-const materialCache: Record<string, THREE.Material> = {};
-
 const createGeometryForType = (type: string): THREE.BufferGeometry => {
-  if (geometryCache[type]) return geometryCache[type];
-
-  let geometry: THREE.BufferGeometry;
   switch (type) {
     case 'IFCWALL':
-      geometry = new THREE.BoxGeometry(0.1, 1.5, 2);
-      break;
+      return new THREE.BoxGeometry(0.2, 3, 4);
     case 'IFCDOOR':
-      geometry = new THREE.BoxGeometry(0.05, 1, 0.4);
-      break;
+      return new THREE.BoxGeometry(0.1, 2.1, 0.8);
     case 'IFCWINDOW':
-      geometry = new THREE.BoxGeometry(0.02, 0.8, 0.6);
-      break;
+      return new THREE.BoxGeometry(0.05, 1.5, 1.2);
+    case 'IFCSPACE':
+      return new THREE.BoxGeometry(4, 0.1, 4);
     case 'IFCCOLUMN':
-      geometry = new THREE.BoxGeometry(0.1, 1.5, 0.1);
-      break;
+      return new THREE.CylinderGeometry(0.2, 0.2, 3);
     case 'IFCBEAM':
-      geometry = new THREE.BoxGeometry(2, 0.15, 0.15);
-      break;
+      return new THREE.BoxGeometry(4, 0.3, 0.3);
     default:
-      geometry = new THREE.BoxGeometry(0.5, 0.5, 0.5);
-      break;
+      return new THREE.BoxGeometry(1, 1, 1);
   }
-  geometryCache[type] = geometry;
-  return geometry;
 };
 
 const createMaterialForType = (type: string): THREE.Material => {
-  if (materialCache[type]) return materialCache[type];
-
   const materials: Record<string, number> = {
     IFCWALL: 0x8B4513,
     IFCDOOR: 0x654321,
@@ -250,66 +225,20 @@ const createMaterialForType = (type: string): THREE.Material => {
     IFCBEAM: 0x8B4513,
     default: 0x888888
   };
-
-  const base = new THREE.MeshBasicMaterial({
+  
+  return new THREE.MeshPhongMaterial({
     color: materials[type] || materials.default,
     transparent: type === 'IFCWINDOW',
     opacity: type === 'IFCWINDOW' ? 0.6 : 1
   });
-  materialCache[type] = base;
-  return base;
 };
 
 const extractStringValue = (param: string): string | null => {
-  const match = param?.match(/'(?:''|[^'])*'/);
-  if (!match) return null;
-  return match[0].slice(1, -1).replace(/''/g, "'");
+  const match = param?.match(/'([^']*)'/);
+  return match ? match[1] : null;
 };
 
 const extractNumericValue = (param: string): number | null => {
   const num = parseFloat(param?.replace(/[^\d.-]/g, '') || '');
   return isNaN(num) ? null : num;
-};
-
-// Utilities for multi-line entity splitting and param splitting
-const splitIFCEntities3D = (content: string): string[] => {
-  const result: string[] = [];
-  let buf = '';
-  let depth = 0;
-  let inString = false;
-  for (let i = 0; i < content.length; i++) {
-    const ch = content[i];
-    const next = content[i + 1];
-    if (ch === "'" && (!inString || next !== "'")) { inString = !inString; buf += ch; continue; }
-    if (inString && ch === "'" && next === "'") { buf += "''"; i++; continue; }
-    if (!inString) {
-      if (ch === '(') depth++;
-      else if (ch === ')') depth = Math.max(0, depth - 1);
-    }
-    buf += ch;
-    if (!inString && ch === ';' && depth === 0) { result.push(buf.trim()); buf = ''; }
-  }
-  if (buf.trim()) result.push(buf.trim());
-  return result;
-};
-
-const splitTopLevelParams3D = (text: string): string[] => {
-  const parts: string[] = [];
-  let buf = '';
-  let depth = 0;
-  let inString = false;
-  for (let i = 0; i < text.length; i++) {
-    const ch = text[i];
-    const next = text[i + 1];
-    if (ch === "'" && (!inString || next !== "'")) { inString = !inString; buf += ch; continue; }
-    if (inString && ch === "'" && next === "'") { buf += "''"; i++; continue; }
-    if (!inString) {
-      if (ch === '(') depth++;
-      else if (ch === ')') depth = Math.max(0, depth - 1);
-      else if (ch === ',' && depth === 0) { parts.push(buf.trim()); buf = ''; continue; }
-    }
-    buf += ch;
-  }
-  if (buf.trim()) parts.push(buf.trim());
-  return parts;
 };
