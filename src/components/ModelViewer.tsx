@@ -78,7 +78,7 @@ const Scene = ({ elements, selectedElement, onElementClick }: ModelViewerProps) 
 
 export const ModelViewer = ({ elements, selectedElement, onElementClick }: ModelViewerProps) => {
   return (
-    <div className="w-full h-full bg-gradient-to-br from-slate-50 to-slate-100 rounded-lg overflow-hidden">
+    <div className="w-full h-full bg-gradient-to-br from-background to-muted rounded-lg overflow-hidden touch-none">
       <Canvas
         camera={{ 
           position: [10, 10, 10], 
@@ -87,6 +87,13 @@ export const ModelViewer = ({ elements, selectedElement, onElementClick }: Model
           far: 1000
         }}
         shadows
+        dpr={[1, 2]}
+        performance={{ min: 0.5 }}
+        gl={{ 
+          antialias: true,
+          alpha: false,
+          powerPreference: "high-performance"
+        }}
       >
         <Suspense fallback={null}>
           <Scene 
@@ -101,6 +108,10 @@ export const ModelViewer = ({ elements, selectedElement, onElementClick }: Model
             enableRotate={true}
             minDistance={5}
             maxDistance={50}
+            touches={{
+              ONE: THREE.TOUCH.ROTATE,
+              TWO: THREE.TOUCH.DOLLY_PAN
+            }}
           />
         </Suspense>
       </Canvas>
