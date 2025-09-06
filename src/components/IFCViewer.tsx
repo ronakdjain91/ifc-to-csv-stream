@@ -21,6 +21,7 @@ export const IFCViewer = () => {
   const [model, setModel] = useState<IFCModel | null>(null);
   const [selectedElement, setSelectedElement] = useState<IFCElement | null>(null);
   const [visibleTypes, setVisibleTypes] = useState<Set<string>>(new Set());
+  const [is3DLoaded, setIs3DLoaded] = useState(false);
   const { toast } = useToast();
   const isMobile = useIsMobile();
 
@@ -62,6 +63,7 @@ export const IFCViewer = () => {
     setModel(null);
     setSelectedElement(null);
     setVisibleTypes(new Set());
+    setIs3DLoaded(false);
   }, []);
 
   const handleElementSelect = useCallback((element: IFCElement) => {
@@ -163,11 +165,19 @@ export const IFCViewer = () => {
             
             <div className="flex-1 overflow-hidden">
               <TabsContent value="model" className="h-full m-0 p-2">
-                <ModelViewer
-                  elements={visibleElements}
-                  selectedElement={selectedElement}
-                  onElementClick={handleElementSelect}
-                />
+                {!is3DLoaded ? (
+                  <div className="h-full w-full flex items-center justify-center">
+                    <Button onClick={() => setIs3DLoaded(true)}>
+                      Load 3D Model
+                    </Button>
+                  </div>
+                ) : (
+                  <ModelViewer
+                    elements={visibleElements}
+                    selectedElement={selectedElement}
+                    onElementClick={handleElementSelect}
+                  />
+                )}
               </TabsContent>
               
               <TabsContent value="quantities" className="h-full m-0">
@@ -228,11 +238,19 @@ export const IFCViewer = () => {
         <ResizablePanelGroup direction="horizontal">
           <ResizablePanel defaultSize={70} minSize={50}>
             <div className="h-full p-4">
-              <ModelViewer
-                elements={visibleElements}
-                selectedElement={selectedElement}
-                onElementClick={handleElementSelect}
-              />
+              {!is3DLoaded ? (
+                <div className="h-full w-full flex items-center justify-center">
+                  <Button onClick={() => setIs3DLoaded(true)}>
+                    Load 3D Model
+                  </Button>
+                </div>
+              ) : (
+                <ModelViewer
+                  elements={visibleElements}
+                  selectedElement={selectedElement}
+                  onElementClick={handleElementSelect}
+                />
+              )}
             </div>
           </ResizablePanel>
           
