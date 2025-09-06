@@ -1,4 +1,5 @@
 import * as THREE from 'three';
+import { computeNetVolumes } from './ifcWebIfc';
 
 export interface IFCElement {
   id: string;
@@ -43,11 +44,22 @@ export const parseIFCFile3D = async (file: File): Promise<IFCModel> => {
     reader.onload = (e) => {
       const content = e.target?.result as string;
       const model = parseIFCContent3D(content);
-      
-      // Simulate processing time
-      setTimeout(() => {
+      // Enrich with web-ifc volumes asynchronously, then resolve
+      computeNetVolumes(file).then((vol) => {
+        if (Object.keys(vol).length) {
+          model.elements.forEach((el) => {
+            const v = vol[el.id];
+            if (v !== undefined) el.properties.volume = v;
+          });
+          Object.values(model.quantities.byType).forEach(q => {
+            q.totalVolume = q.elements.reduce((s, e) => s + (e.properties.volume || 0), 0);
+          });
+          Object.values(model.quantities.byLevel).forEach(q => {
+            q.totalVolume = q.elements.reduce((s, e) => s + (e.properties.volume || 0), 0);
+          });
+        }
         resolve(model);
-      }, 2000);
+      }).catch(() => resolve(model));
     };
     
     reader.readAsText(file);
