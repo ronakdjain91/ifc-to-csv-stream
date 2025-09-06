@@ -1,6 +1,6 @@
 import { Canvas } from '@react-three/fiber';
-import { OrbitControls, Grid, Environment } from '@react-three/drei';
-import { Suspense, useMemo } from 'react';
+import { OrbitControls, Grid } from '@react-three/drei';
+import { Suspense, useMemo, useMemo as ReactUseMemo } from 'react';
 import * as THREE from 'three';
 import { IFCElement } from '../utils/ifcParser3D';
 
@@ -18,14 +18,11 @@ interface ElementMeshProps {
 
 const ElementMesh = ({ element, isSelected, onClick }: ElementMeshProps) => {
   const material = useMemo(() => {
-    if (!element.material) return new THREE.MeshPhongMaterial({ color: 0x888888 });
-    
-    const mat = element.material.clone() as THREE.MeshPhongMaterial;
+    const base = (element.material as THREE.MeshBasicMaterial) || new THREE.MeshBasicMaterial({ color: 0x888888 });
     if (isSelected) {
-      mat.color.setHex(0xff6b35);
-      mat.emissive.setHex(0x442211);
+      return new THREE.MeshBasicMaterial({ color: 0xff6b35 });
     }
-    return mat;
+    return base;
   }, [element.material, isSelected]);
 
   return (
@@ -47,13 +44,12 @@ const ElementMesh = ({ element, isSelected, onClick }: ElementMeshProps) => {
 };
 
 const Scene = ({ elements, selectedElement, onElementClick }: ModelViewerProps) => {
+  const limited = useMemo(() => elements.slice(0, 200), [elements]);
   return (
     <>
-      <ambientLight intensity={0.4} />
-      <directionalLight position={[10, 10, 5]} intensity={1} castShadow />
-      <directionalLight position={[-10, -10, -5]} intensity={0.5} />
+      {/* MeshBasicMaterial does not require lighting */}
       
-      {elements.map((element) => (
+      {limited.map((element) => (
         <ElementMesh
           key={element.id}
           element={element}
@@ -62,46 +58,24 @@ const Scene = ({ elements, selectedElement, onElementClick }: ModelViewerProps) 
         />
       ))}
       
-      <Grid 
-        args={[50, 50]} 
-        cellSize={1} 
-        cellThickness={0.5} 
-        cellColor="#888888" 
-        sectionSize={10} 
-        sectionThickness={1} 
-        sectionColor="#444444"
-        position={[0, -0.1, 0]}
-      />
+      <Grid args={[20, 20]} cellSize={1} cellThickness={0.3} cellColor="#666666" sectionSize={5} sectionThickness={0.5} sectionColor="#444444" position={[0, -0.1, 0]} />
     </>
   );
 };
 
 export const ModelViewer = ({ elements, selectedElement, onElementClick }: ModelViewerProps) => {
   return (
-    <div className="w-full h-full bg-gradient-to-br from-slate-50 to-slate-100 rounded-lg overflow-hidden">
+    <div className="w-full h-full bg-gradient-to-br from-background to-muted rounded-lg overflow-hidden touch-none">
       <Canvas
-        camera={{ 
-          position: [10, 10, 10], 
-          fov: 75,
-          near: 0.1,
-          far: 1000
-        }}
-        shadows
+        camera={{ position: [6, 6, 6], fov: 60, near: 0.1, far: 200 }}
+        dpr={[1, 1]}
+        performance={{ min: 0.6 }}
+        frameloop="demand"
+        gl={{ antialias: false, alpha: false, powerPreference: 'low-power', preserveDrawingBuffer: false }}
       >
         <Suspense fallback={null}>
-          <Scene 
-            elements={elements} 
-            selectedElement={selectedElement} 
-            onElementClick={onElementClick} 
-          />
-          <Environment preset="city" />
-          <OrbitControls 
-            enablePan={true}
-            enableZoom={true}
-            enableRotate={true}
-            minDistance={5}
-            maxDistance={50}
-          />
+          <Scene elements={elements} selectedElement={selectedElement} onElementClick={onElementClick} />
+          <OrbitControls enablePan enableZoom enableRotate enableDamping dampingFactor={0.08} minDistance={3} maxDistance={20} />
         </Suspense>
       </Canvas>
     </div>
