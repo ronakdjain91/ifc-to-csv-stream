@@ -65,12 +65,15 @@ export const ProcessingProgress = ({
 
   const downloadCSV = () => {
     if (!csvData || !file) return;
-    
-    const blob = new Blob([csvData], { type: 'text/csv' });
+    // Prepend UTF-8 BOM for Excel compatibility and generate a safe filename
+    const bom = '\uFEFF';
+    const blob = new Blob([bom, csvData], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = `${file.name.replace('.ifc', '')}.csv`;
+    const baseName = file.name.replace(/\.[^/.]+$/, '');
+    const safeBase = baseName.replace(/[^a-zA-Z0-9._-]+/g, '_') || 'export';
+    a.download = `${safeBase}.csv`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);

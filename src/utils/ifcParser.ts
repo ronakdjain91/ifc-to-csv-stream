@@ -10,35 +10,70 @@ export interface IFCEntity {
 export const parseIFCFile = async (file: File): Promise<IFCEntity[]> => {
   return new Promise((resolve) => {
     const reader = new FileReader();
-    
+
     reader.onload = (e) => {
       const content = e.target?.result as string;
       const entities = parseIFCContent(content);
-      
-      // Simulate processing time
-      setTimeout(() => {
-        resolve(entities);
-      }, 3000);
+      resolve(entities);
     };
-    
+
     reader.readAsText(file);
   });
 };
 
 const parseIFCContent = (content: string): IFCEntity[] => {
   const entities: IFCEntity[] = [];
-  const lines = content.split('\n');
-  
-  for (const line of lines) {
-    if (line.trim().startsWith('#')) {
-      const entity = parseIFCLine(line);
-      if (entity) {
-        entities.push(entity);
-      }
+  const records = splitIFCEntities(content);
+
+  for (const record of records) {
+    const trimmed = record.trim();
+    if (!trimmed.startsWith('#')) continue;
+    const entity = parseIFCLine(trimmed);
+    if (entity) entities.push(entity);
+  }
+
+  return entities;
+};
+
+// Splits IFC STEP content into entity records that may span multiple lines
+const splitIFCEntities = (content: string): string[] => {
+  const result: string[] = [];
+  let buf = '';
+  let parenDepth = 0;
+  let inString = false;
+
+  for (let i = 0; i < content.length; i++) {
+    const ch = content[i];
+    const next = content[i + 1];
+
+    // handle string literals with doubled single-quotes inside
+    if (ch === "'" && (!inString || next !== "'")) {
+      inString = !inString;
+      buf += ch;
+      continue;
+    }
+    if (inString && ch === "'" && next === "'") {
+      buf += "''";
+      i++; // skip next
+      continue;
+    }
+
+    if (!inString) {
+      if (ch === '(') parenDepth++;
+      if (ch === ')') parenDepth = Math.max(0, parenDepth - 1);
+    }
+
+    buf += ch;
+
+    if (!inString && ch === ';' && parenDepth === 0) {
+      const record = buf.trim();
+      if (record) result.push(record);
+      buf = '';
     }
   }
-  
-  return entities;
+
+  if (buf.trim()) result.push(buf.trim());
+  return result;
 };
 
 const parseIFCLine = (line: string): IFCEntity | null => {
@@ -110,19 +145,29 @@ export const convertToCSV = (entities: IFCEntity[]): string => {
   });
   
   const headers = ['ID', 'Type', ...Array.from(allProperties)];
-  const csvLines = [headers.join(',')];
+  const csvLines = [headers.map(csvEscape).join(',')];
   
   entities.forEach(entity => {
     const row = [
-      entity.id,
-      entity.type,
+      csvEscape(entity.id),
+      csvEscape(entity.type),
       ...Array.from(allProperties).map(prop => {
         const value = entity.properties[prop];
-        return value !== undefined ? `"${value}"` : '';
+        return value !== undefined ? csvEscape(value) : '';
       })
     ];
     csvLines.push(row.join(','));
   });
   
   return csvLines.join('\n');
+};
+
+const csvEscape = (value: unknown): string => {
+  let str: string;
+  if (value === null || value === undefined) str = '';
+  else if (typeof value === 'object') str = JSON.stringify(value);
+  else str = String(value);
+  // escape quotes
+  str = str.replace(/"/g, '""');
+  return `"${str}"`;
 };
