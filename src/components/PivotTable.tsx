@@ -5,7 +5,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { Badge } from './ui/badge';
 import { Download, ChevronDown, ChevronRight } from 'lucide-react';
 import { IFCElement } from '../utils/ifcParser3D';
-import * as XLSX from 'xlsx';
+// lazy import to avoid bundler resolution issues in some environments
 
 interface PivotTableProps {
   elements: IFCElement[];
@@ -76,7 +76,7 @@ export const PivotTable = ({ elements, selectedElement, onElementSelect }: Pivot
     return data;
   }, [elements, rowField, columnField]);
 
-  const exportToExcel = () => {
+  const exportToExcel = async () => {
     const exportData: any[] = [];
     
     Object.entries(pivotData).forEach(([rowKey, rowData]) => {
@@ -95,6 +95,8 @@ export const PivotTable = ({ elements, selectedElement, onElementSelect }: Pivot
       });
     });
     
+    const mod = await import('xlsx/xlsx.mjs');
+    const XLSX: any = (mod as any).default ?? mod;
     const ws = XLSX.utils.json_to_sheet(exportData);
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, 'IFC Elements');

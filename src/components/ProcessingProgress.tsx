@@ -4,7 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { cn } from '@/lib/utils';
-import * as XLSX from 'xlsx';
+// Note: XLSX is dynamically imported inside handlers to avoid bundling issues
 
 interface ProcessingProgressProps {
   file: File | null;
@@ -78,8 +78,10 @@ export const ProcessingProgress = ({
     URL.revokeObjectURL(url);
   };
 
-  const downloadExcel = () => {
+  const downloadExcel = async () => {
     if (!csvData || !file) return;
+    const mod = await import('xlsx/xlsx.mjs');
+    const XLSX: any = (mod as any).default ?? mod;
     const ws = XLSX.utils.csv_to_sheet(csvData);
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, 'IFC Data');
