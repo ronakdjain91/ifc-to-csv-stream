@@ -20,8 +20,6 @@ export default defineConfig(({ mode }) => ({
     },
   },
   optimizeDeps: {
-    include: [
-      'xlsx/xlsx.mjs'
-    ]
+    include: ['xlsx']
   },
 }));

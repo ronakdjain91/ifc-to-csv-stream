@@ -95,7 +95,7 @@ export const PivotTable = ({ elements, selectedElement, onElementSelect }: Pivot
       });
     });
     
-    const mod = await import('xlsx/xlsx.mjs');
+    const mod = await import('xlsx');
     const XLSX: any = (mod as any).default ?? mod;
     const ws = XLSX.utils.json_to_sheet(exportData);
     const wb = XLSX.utils.book_new();

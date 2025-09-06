@@ -80,7 +80,7 @@ export const ProcessingProgress = ({
 
   const downloadExcel = async () => {
     if (!csvData || !file) return;
-    const mod = await import('xlsx/xlsx.mjs');
+    const mod = await import('xlsx');
     const XLSX: any = (mod as any).default ?? mod;
     const ws = XLSX.utils.csv_to_sheet(csvData);
     const wb = XLSX.utils.book_new();
