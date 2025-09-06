@@ -13,6 +13,7 @@ import { ResizablePanelGroup, ResizablePanel, ResizableHandle } from './ui/resiz
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
 import { useIsMobile } from '../hooks/use-mobile';
 import { parseIFCFile3D, IFCModel, IFCElement } from '../utils/ifcParser3D';
+import { parseIFCFile as parseIFCAll, convertToCSVAllParams } from '@/utils/ifcParser';
 
 export const IFCViewer = () => {
   const [file, setFile] = useState<File | null>(null);
@@ -86,6 +87,24 @@ export const IFCViewer = () => {
     visibleTypes.has(element.type)
   ) || [];
 
+  const handleDownloadAllParamsCSV = useCallback(async () => {
+    if (!file) return;
+    const entities = await parseIFCAll(file);
+    const csv = convertToCSVAllParams(entities);
+    const bom = '\uFEFF';
+    const blob = new Blob([bom, csv], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    const baseName = file.name.replace(/\.[^/.]+$/, '');
+    const safeBase = baseName.replace(/[^a-zA-Z0-9._-]+/g, '_') || 'export';
+    a.download = `${safeBase}_all_params.csv`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }, [file]);
+
   if (!file) {
     return (
       <Card className="w-full max-w-2xl mx-auto">
@@ -155,12 +174,17 @@ export const IFCViewer = () => {
         <div className="flex-1 overflow-hidden">
           <Tabs defaultValue="model" className="h-full flex flex-col">
             <div className="border-b px-4">
-              <TabsList className="grid w-full grid-cols-4">
-                <TabsTrigger value="model" className="text-xs">3D Model</TabsTrigger>
-                <TabsTrigger value="quantities" className="text-xs">Quantities</TabsTrigger>
-                <TabsTrigger value="pivot" className="text-xs">Pivot</TabsTrigger>
-                <TabsTrigger value="hierarchy" className="text-xs">Hierarchy</TabsTrigger>
-              </TabsList>
+              <div className="flex items-center justify-between py-2 gap-2">
+                <TabsList className="grid grid-cols-4">
+                  <TabsTrigger value="model" className="text-xs">3D Model</TabsTrigger>
+                  <TabsTrigger value="quantities" className="text-xs">Quantities</TabsTrigger>
+                  <TabsTrigger value="pivot" className="text-xs">Pivot</TabsTrigger>
+                  <TabsTrigger value="hierarchy" className="text-xs">Hierarchy</TabsTrigger>
+                </TabsList>
+                <Button size="sm" variant="outline" onClick={handleDownloadAllParamsCSV}>
+                  Download CSV (All Params)
+                </Button>
+              </div>
             </div>
             
             <div className="flex-1 overflow-hidden">
@@ -259,11 +283,16 @@ export const IFCViewer = () => {
           <ResizablePanel defaultSize={40} minSize={30} maxSize={60}>
             <Tabs defaultValue="quantities" className="h-full flex flex-col">
               <div className="border-b px-4">
-                <TabsList className="grid w-full grid-cols-3">
-                  <TabsTrigger value="quantities" className="text-sm">Quantities</TabsTrigger>
-                  <TabsTrigger value="pivot" className="text-sm">Pivot</TabsTrigger>
-                  <TabsTrigger value="hierarchy" className="text-sm">Hierarchy</TabsTrigger>
-                </TabsList>
+                <div className="flex items-center justify-between py-2 gap-2">
+                  <TabsList className="grid grid-cols-3">
+                    <TabsTrigger value="quantities" className="text-sm">Quantities</TabsTrigger>
+                    <TabsTrigger value="pivot" className="text-sm">Pivot</TabsTrigger>
+                    <TabsTrigger value="hierarchy" className="text-sm">Hierarchy</TabsTrigger>
+                  </TabsList>
+                  <Button size="sm" variant="outline" onClick={handleDownloadAllParamsCSV}>
+                    Download CSV (All Params)
+                  </Button>
+                </div>
               </div>
               
               <div className="flex-1 overflow-hidden">

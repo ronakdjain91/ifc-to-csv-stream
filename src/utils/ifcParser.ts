@@ -5,6 +5,7 @@ export interface IFCEntity {
   id: string;
   type: string;
   properties: Record<string, any>;
+  params?: string[];
 }
 
 export const parseIFCFile = async (file: File): Promise<IFCEntity[]> => {
@@ -83,7 +84,8 @@ const parseIFCLine = (line: string): IFCEntity | null => {
     return {
       id,
       type,
-      properties
+      properties,
+      params: paramList,
     };
   } catch (error) {
     return null;
@@ -124,5 +126,20 @@ export const convertToCSV = (entities: IFCEntity[]): string => {
     csvLines.push(row.join(','));
   });
   
+  return csvLines.join('\n');
+};
+
+export const convertToCSVAllParams = (entities: IFCEntity[]): string => {
+  if (entities.length === 0) return '';
+  const maxParams = entities.reduce((m, e) => Math.max(m, e.params?.length || 0), 0);
+  const headers = ['ID', 'Type', ...Array.from({ length: maxParams }, (_, i) => `Param_${i + 1}`)];
+  const csvLines = [headers.join(',')];
+  entities.forEach(entity => {
+    const params = entity.params || [];
+    const padded = [...params];
+    while (padded.length < maxParams) padded.push('');
+    const row = [entity.id, entity.type, ...padded.map(v => (v !== undefined ? `"${String(v).replace(/\"/g, '""')}"` : ''))];
+    csvLines.push(row.join(','));
+  });
   return csvLines.join('\n');
 };
